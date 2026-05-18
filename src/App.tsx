@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Copy, Check, Moon, Sun, Loader2 } from "lucide-react";
+import { Copy, Check, Moon, Sun, Loader2, Settings, Eye, EyeOff, X } from "lucide-react";
 import { translations, LanguageData } from "./i18n";
+import { GoogleGenAI } from "@google/genai";
 
 type SupportLang = "en" | "fr" | "es" | "it" | "de";
 type SourceLang = SupportLang | "auto" | "latin" | "pt" | "ar";
@@ -32,6 +33,12 @@ export default function App() {
   const [targetLang, setTargetLang] = useState<TargetLang>(() => (localStorage.getItem("targetLang") as TargetLang) || "en");
 
   const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem("darkMode") === "true");
+  
+  const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem("verbumflow_gemini_key") || "");
+  const [showSettings, setShowSettings] = useState(false);
+  const [tempApiKey, setTempApiKey] = useState("");
+  const [showKeyPassword, setShowKeyPassword] = useState(false);
+  const [keySavedMessage, setKeySavedMessage] = useState(false);
 
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -61,6 +68,34 @@ export default function App() {
     }
     localStorage.setItem("darkMode", darkMode.toString());
   }, [darkMode]);
+  
+  useEffect(() => {
+    if (showSettings) {
+      setTempApiKey(apiKey);
+      setKeySavedMessage(false);
+      setShowKeyPassword(false);
+    }
+  }, [showSettings, apiKey]);
+
+  const saveSettings = () => {
+    setApiKey(tempApiKey);
+    if (tempApiKey) {
+      localStorage.setItem("verbumflow_gemini_key", tempApiKey);
+    } else {
+      localStorage.removeItem("verbumflow_gemini_key");
+    }
+    setKeySavedMessage(true);
+    setTimeout(() => {
+      setKeySavedMessage(false);
+      setShowSettings(false);
+    }, 1500);
+  };
+
+  const clearKey = () => {
+    setApiKey("");
+    setTempApiKey("");
+    localStorage.removeItem("verbumflow_gemini_key");
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -91,6 +126,12 @@ export default function App() {
   const processAudio = async () => {
     if (!file) return;
 
+    if (!apiKey) {
+      setError("No API Key found. Please enter your Gemini API Key in Settings.");
+      setShowSettings(true);
+      return;
+    }
+
     setIsProcessing(true);
     setError(null);
     setProgressStep("uploading");
@@ -99,99 +140,93 @@ export default function App() {
     setSummary("");
     setActiveTab("transcription");
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("sourceLang", sourceLang);
-    formData.append("targetLang", targetLang);
-
     try {
-      const response = await fetch("/api/transcribe", {
-        method: "POST",
-        body: formData,
-      });
+      const ai = new GoogleGenAI({ apiKey: apiKey });
 
-      if (!response.ok) {
-        throw new Error("Server error");
-      }
-
-      if (!response.body) {
-        throw new Error("No response body");
+      let uploadResult;
+      try {
+        uploadResult = await ai.files.upload({
+          file: file,
+          config: { mimeType: file.type || "audio/mp3" },
+        });
+      } catch(err: any) {
+        throw new Error("File upload failed: " + err.message);
       }
 
       setProgressStep("transcribing");
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let done = false;
-      let fullText = "";
-      let buffer = "";
+      const isAutoDetect = sourceLang === "auto";
+      const srcLangText = isAutoDetect ? "its original language" : sourceLang;
 
-      while (!done) {
-        const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-        
-        if (value) {
-          buffer += decoder.decode(value, { stream: true });
+      const systemInstruction = 
+        "You are an expert translator and theologian. You adopt a respectful, formal register adapted to religious/theological speech.";
+
+      const prompt = `This audio is in ${srcLangText}.
+Please:
+1. Transcribe the full audio with timestamps every 30 seconds in format [HH:MM:SS]
+2. Translate the full content into ${targetLang}, preserving oratorical style and theological terminology, keeping timestamps
+3. Write a structured summary in ${targetLang} with: Central Theme, Main Points, Notable Quotes (with timestamps), Conclusion, Observations.
+Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n--- TRANSLATION ---\n\n, \n\n--- SUMMARY ---\n\n`;
+
+      const responseStream = await ai.models.generateContentStream({
+        model: "gemini-2.0-flash",
+        contents: [
+          { fileData: { fileUri: uploadResult.uri, mimeType: uploadResult.mimeType } },
+          { text: prompt }
+        ],
+        config: {
+          systemInstruction: systemInstruction,
         }
+      });
 
-        let eolIndex;
-        while ((eolIndex = buffer.indexOf("\n\n")) >= 0) {
-          const line = buffer.slice(0, eolIndex).trim();
-          buffer = buffer.slice(eolIndex + 2);
+      let fullText = "";
+      
+      for await (const chunk of responseStream) {
+        if (chunk.text) {
+          fullText += chunk.text;
+          
+          let t_temp = fullText;
+          let tl_temp = "";
+          let sum_temp = "";
 
-          if (line.startsWith("data: ")) {
-            const dataStr = line.substring(6);
-            if (dataStr === "[DONE]") {
-              done = true;
-              break;
+          if (fullText.includes("--- TRANSLATION ---")) {
+            setProgressStep("translating");
+            setActiveTab("translation");
+            const parts = fullText.split("--- TRANSLATION ---");
+            t_temp = parts[0].replace("--- TRANSCRIPTION ---", "").trim();
+            
+            if (parts[1].includes("--- SUMMARY ---")) {
+              setProgressStep("summarizing");
+              setActiveTab("summary");
+              const subParts = parts[1].split("--- SUMMARY ---");
+              tl_temp = subParts[0].trim();
+              sum_temp = subParts[1].trim();
+            } else {
+              tl_temp = parts[1].trim();
             }
-            try {
-              const data = JSON.parse(dataStr);
-              if (data.error) {
-                setError(t.errorGeneric);
-                break;
-              }
-              if (data.text) {
-                fullText += data.text;
-                
-                // Parse sections
-                let t_temp = fullText;
-                let tl_temp = "";
-                let sum_temp = "";
-
-                if (fullText.includes("--- TRANSLATION ---")) {
-                  setProgressStep("translating");
-                  setActiveTab("translation");
-                  const parts = fullText.split("--- TRANSLATION ---");
-                  t_temp = parts[0].replace("--- TRANSCRIPTION ---", "").trim();
-                  
-                  if (parts[1].includes("--- SUMMARY ---")) {
-                    setProgressStep("summarizing");
-                    setActiveTab("summary");
-                    const subParts = parts[1].split("--- SUMMARY ---");
-                    tl_temp = subParts[0].trim();
-                    sum_temp = subParts[1].trim();
-                  } else {
-                    tl_temp = parts[1].trim();
-                  }
-                } else {
-                  t_temp = fullText.replace("--- TRANSCRIPTION ---", "").trim();
-                }
-
-                setTranscription(t_temp);
-                setTranslation(tl_temp);
-                setSummary(sum_temp);
-              }
-            } catch (e) {
-              console.error("SSE Parse error", e, dataStr);
-            }
+          } else {
+            t_temp = fullText.replace("--- TRANSCRIPTION ---", "").trim();
           }
+
+          setTranscription(t_temp);
+          setTranslation(tl_temp);
+          setSummary(sum_temp);
         }
       }
+
       setProgressStep("idle");
-    } catch (err) {
+
+      // Cleanup
+      try {
+        if (uploadResult && uploadResult.name) {
+          await ai.files.delete({ name: uploadResult.name });
+        }
+      } catch (e) {
+        console.error("Cleanup error", e);
+      }
+    } catch (err: any) {
       console.error(err);
-      setError(t.errorGeneric);
+      setError(err instanceof Error ? err.message : t.errorGeneric);
       setProgressStep("idle");
     } finally {
       setIsProcessing(false);
@@ -260,6 +295,67 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
+      {!apiKey && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-800 px-4 py-2 flex items-center justify-center gap-2 text-sm text-yellow-800 dark:text-yellow-200 z-20 shrink-0">
+          <span>⚠️ Enter your Gemini API key in Settings to use the app.</span>
+          <button onClick={() => setShowSettings(true)} className="font-semibold underline hover:text-yellow-900 dark:hover:text-yellow-100">
+            Open Settings
+          </button>
+        </div>
+      )}
+
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">Settings</h2>
+              <button onClick={() => setShowSettings(false)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Gemini API Key</label>
+                <div className="relative">
+                  <input
+                    type={showKeyPassword ? "text" : "password"}
+                    value={tempApiKey}
+                    onChange={(e) => setTempApiKey(e.target.value)}
+                    placeholder="AIzaSy..."
+                    className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-200 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowKeyPassword(!showKeyPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    {showKeyPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Your key is stored locally in your browser.</p>
+              </div>
+            </div>
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+              <button
+                onClick={clearKey}
+                className="text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-3 py-1.5"
+              >
+                Clear key
+              </button>
+              <div className="flex items-center gap-3">
+                {keySavedMessage && <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1 font-medium"><Check size={16} /> Key saved</span>}
+                <button
+                  onClick={saveSettings}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="h-16 flex items-center justify-between px-4 sm:px-8 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-sm z-10">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">V</div>
@@ -308,10 +404,18 @@ export default function App() {
 
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 sm:ml-2 mt-[14px] sm:mt-0 transition-colors rounded-full"
+            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 sm:ml-2 mt-[14px] sm:mt-0 transition-colors rounded-full flex-shrink-0"
             aria-label="Toggle dark mode"
           >
             {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          
+          <button
+            onClick={() => setShowSettings(true)}
+            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 mt-[14px] sm:mt-0 transition-colors rounded-full flex-shrink-0"
+            aria-label="Settings"
+          >
+            <Settings size={18} />
           </button>
         </div>
       </header>
