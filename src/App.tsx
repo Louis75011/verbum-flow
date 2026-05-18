@@ -40,6 +40,7 @@ export default function App() {
   const [tempApiKey, setTempApiKey] = useState("");
   const [showKeyPassword, setShowKeyPassword] = useState(false);
   const [keySavedMessage, setKeySavedMessage] = useState(false);
+  const [legalModal, setLegalModal] = useState<"mentions" | "privacy" | "rgaa" | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -344,8 +345,9 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
             </div>
             <div className="p-6 space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.uiLabel}</label>
+                <label htmlFor="uiLangSelect" className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.uiLabel}</label>
                 <select
+                  id="uiLangSelect"
                   value={uiLang}
                   onChange={(e) => setUiLang(e.target.value as SupportLang)}
                   className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -360,9 +362,10 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.apiKeyLabel}</label>
+                <label htmlFor="apiKeyInput" className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.apiKeyLabel}</label>
                 <div className="relative">
                   <input
+                    id="apiKeyInput"
                     type={showKeyPassword ? "text" : "password"}
                     value={tempApiKey}
                     onChange={(e) => setTempApiKey(e.target.value)}
@@ -402,16 +405,17 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
       )}
 
       <header className="h-16 flex items-center justify-between px-4 sm:px-8 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shrink-0 shadow-sm z-10">
-        <div className="flex items-center gap-3">
+        <a href="#" aria-label="Retour à l'accueil" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1">
           <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">V</div>
           <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white hidden sm:block">
             Verbum<span className="font-light text-slate-500 dark:text-slate-400 italic">Flow</span>
           </h1>
-        </div>
+        </a>
                <div className="flex items-center gap-2 sm:gap-4 text-xs font-medium">
           <div className="flex flex-col hidden sm:flex">
-            <label className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t.sourceLabel}</label>
+            <label htmlFor="sourceLangDesktop" className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t.sourceLabel}</label>
             <select
+              id="sourceLangDesktop"
               value={sourceLang}
               onChange={(e) => setSourceLang(e.target.value as SourceLang)}
               className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 outline-none w-28 lg:w-32 text-slate-700 dark:text-slate-300"
@@ -421,8 +425,9 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
           </div>
           
           <div className="flex flex-col hidden sm:flex">
-            <label className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t.targetLabel}</label>
+            <label htmlFor="targetLangDesktop" className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t.targetLabel}</label>
             <select
+              id="targetLangDesktop"
               value={targetLang}
               onChange={(e) => setTargetLang(e.target.value as TargetLang)}
               className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 outline-none w-28 lg:w-32 text-slate-700 dark:text-slate-300"
@@ -455,12 +460,14 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
           
           <div className="flex sm:hidden gap-2">
 			  <div className="flex flex-col flex-1">
-				<select value={sourceLang} onChange={(e) => setSourceLang(e.target.value as SourceLang)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs px-2 py-2 text-slate-700 dark:text-slate-300">
+                <label htmlFor="sourceLangMobile" className="sr-only">{t.sourceLabel}</label>
+				<select id="sourceLangMobile" value={sourceLang} onChange={(e) => setSourceLang(e.target.value as SourceLang)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs px-2 py-2 text-slate-700 dark:text-slate-300">
 				  {sourceLanguages.map(l => <option key={l.value} value={l.value}>{l.value === 'auto' ? t.autoDetect : l.labelEn}</option>)}
 				</select>
 			  </div>
 			  <div className="flex flex-col flex-1">
-				<select value={targetLang} onChange={(e) => setTargetLang(e.target.value as TargetLang)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs px-2 py-2 text-slate-700 dark:text-slate-300">
+                <label htmlFor="targetLangMobile" className="sr-only">{t.targetLabel}</label>
+				<select id="targetLangMobile" value={targetLang} onChange={(e) => setTargetLang(e.target.value as TargetLang)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-xs px-2 py-2 text-slate-700 dark:text-slate-300">
 				  {targetLanguages.map(l => <option key={l.value} value={l.value}>{l.labelEn}</option>)}
 				</select>
 			  </div>
@@ -473,20 +480,21 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
             onClick={() => fileInputRef.current?.click()}
           >
             <input 
+              id="fileUpload"
               type="file" 
               ref={fileInputRef}
               onChange={handleFileChange}
               accept="audio/*,video/*"
               className="hidden"
             />
-            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-4 opacity-70">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-4 opacity-70">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="17 8 12 3 7 8"/>
               <line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
             {!file ? (
                <div className="text-center">
-                 <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 px-2">{t.dragDrop}</p>
+                 <label htmlFor="fileUpload" className="text-sm font-semibold text-slate-700 dark:text-slate-300 px-2 cursor-pointer">{t.dragDrop}</label>
                </div>
             ) : (
                <div className="text-center w-full px-2">
@@ -557,6 +565,7 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
           )}
 
           <div className="mt-auto pt-4 p-3 text-[10px] text-slate-400 italic hidden lg:block">
+            {/* Note RGAA : Le contraste de text-slate-400 sur fond clair est potentiellement faible (inférieur à 4.5:1). À ajuster selon la charte exacte si nécessaire. */}
             {t.systemPromptLabel}
           </div>
         </div>
@@ -616,6 +625,63 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
            </div>
         </div>
       </main>
+
+      {legalModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700 shrink-0">
+              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">
+                {legalModal === "mentions" && t.mentionsLegal}
+                {legalModal === "privacy" && t.privacyPolicy}
+                {legalModal === "rgaa" && t.accessibilityInfo}
+              </h2>
+              <button onClick={() => setLegalModal(null)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto custom-scrollbar text-sm text-slate-600 dark:text-slate-300 space-y-4">
+              {legalModal === "mentions" && (
+                <>
+                  <p><strong>Éditeur du site :</strong> Arx Systema (Louis Rouanet)</p>
+                  <p><strong>Siège social :</strong> Yvelines, France</p>
+                  <p><strong>Directeur de la publication :</strong> Louis Rouanet</p>
+                  <p><strong>Hébergement :</strong> Google Cloud Platform</p>
+                  <p>Ce site et ses contenus sont la propriété intellectuelle exclusive d'Arx Systema. Toute reproduction est interdite sans accord préalable.</p>
+                </>
+              )}
+              {legalModal === "privacy" && (
+                <>
+                  <p><strong>Collecte de données :</strong> VerbumFlow utilise l'API Gemini pour transcrire et traduire vos fichiers audio et vidéo.</p>
+                  <p><strong>Utilisation des données :</strong> Vos fichiers ne sont traités que dans le but de fournir le service demandé. Ils ne sont pas utilisés pour entraîner des modèles publics sans votre consentement.</p>
+                  <p><strong>Vos droits :</strong> Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données. Contactez Arx Systema pour toute demande.</p>
+                  <p><strong>Clés API :</strong> Vos clés API Gemini sont stockées localement dans votre navigateur et ne sont jamais transmises à nos serveurs autres que ceux de Google pour effectuer l'appel d'API.</p>
+                </>
+              )}
+              {legalModal === "rgaa" && (
+                <>
+                  <p><strong>Déclaration d'accessibilité</strong></p>
+                  <p>Arx Systema s'engage à rendre ses sites internet accessibles conformément à l'article 47 de la loi n°2005-102 du 11 février 2005.</p>
+                  <p><strong>État de conformité :</strong> VerbumFlow est <strong>non conforme</strong> avec le RGAA. Des audits sont en cours pour déterminer les non-conformités et les corriger.</p>
+                  <p>Si vous rencontrez des difficultés d'accès, vous pouvez nous contacter pour obtenir une alternative accessible.</p>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <footer className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 py-6 shrink-0 z-10 w-full text-center px-4">
+        <div className="max-w-[1400px] mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            &copy; {new Date().getFullYear()} <span className="font-semibold text-slate-700 dark:text-slate-300">Arx Systema</span>. Tous droits réservés.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4 text-xs font-medium text-slate-500 dark:text-slate-400">
+            <button onClick={() => setLegalModal("mentions")} className="hover:text-slate-800 dark:hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1 transition-colors">{t.mentionsLegal}</button>
+            <button onClick={() => setLegalModal("privacy")} className="hover:text-slate-800 dark:hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1 transition-colors">{t.privacyPolicy}</button>
+            <button onClick={() => setLegalModal("rgaa")} className="hover:text-slate-800 dark:hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1 transition-colors">{t.accessibilityInfo.split(/[:\s]/)[0]}</button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

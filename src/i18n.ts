@@ -43,6 +43,9 @@ export type LanguageData = {
   systemPromptLabel: string;
   words: string;
   aiEngine: string;
+  mentionsLegal: string;
+  privacyPolicy: string;
+  accessibilityInfo: string;
 };
 
 export const translations: Record<string, LanguageData> = {
@@ -91,6 +94,9 @@ export const translations: Record<string, LanguageData> = {
     systemPromptLabel: "Prompt système : Registre théologique • Très formel • Sensibilité liturgique activée",
     words: "Mots",
     aiEngine: "Moteur IA : Gemini 2.0 Flash (Multimodal)",
+    mentionsLegal: "Mentions Légales",
+    privacyPolicy: "Politique de confidentialité",
+    accessibilityInfo: "Accessibilité : non conforme",
   },
   es: {
     sourceLabel: "Idioma de origen",
@@ -137,6 +143,9 @@ export const translations: Record<string, LanguageData> = {
     systemPromptLabel: "Prompt del sistema: Registro teológico • Muy formal • Sensibilidad litúrgica activada",
     words: "Palabras",
     aiEngine: "Motor IA: Gemini 2.0 Flash (Multimodal)",
+    mentionsLegal: "Aviso legal",
+    privacyPolicy: "Política de privacidad",
+    accessibilityInfo: "Accesibilidad: no conforme",
   },
   de: {
     sourceLabel: "Ausgangssprache",
@@ -183,6 +192,9 @@ export const translations: Record<string, LanguageData> = {
     systemPromptLabel: "System-Prompt: Theologisches Register • Hochformal • Liturgische Sensibilität aktiviert",
     words: "Wörter",
     aiEngine: "KI-Engine: Gemini 2.0 Flash (Multimodal)",
+    mentionsLegal: "Impressum",
+    privacyPolicy: "Datenschutzerklärung",
+    accessibilityInfo: "Barrierefreiheit: nicht konform",
   },
   it: {
     sourceLabel: "Lingua di origine",
@@ -229,6 +241,9 @@ export const translations: Record<string, LanguageData> = {
     systemPromptLabel: "Prompt di sistema: Registro teologico • Molto formale • Sensibilità liturgica attivata",
     words: "Parole",
     aiEngine: "Motore IA: Gemini 2.0 Flash (Multimodale)",
+    mentionsLegal: "Note legali",
+    privacyPolicy: "Informativa sulla privacy",
+    accessibilityInfo: "Accessibilità: non conforme",
   },
   en: {
     sourceLabel: "Source Language",
@@ -275,6 +290,9 @@ export const translations: Record<string, LanguageData> = {
     systemPromptLabel: "System Prompt: Theological Register • High Formal • Liturgical Sensitivity Enabled",
     words: "Words",
     aiEngine: "AI Engine: Gemini 2.0 Flash (Multimodal)",
+    mentionsLegal: "Legal Notice",
+    privacyPolicy: "Privacy Policy",
+    accessibilityInfo: "Accessibility: non-compliant",
   },
   pt: {
     sourceLabel: "Idioma de Origem",
@@ -321,5 +339,8 @@ export const translations: Record<string, LanguageData> = {
     systemPromptLabel: "Prompt do Sistema: Registro Teológico • Muito Formal • Sensibilidade Litúrgica Ativada",
     words: "Palavras",
     aiEngine: "Motor IA: Gemini 2.0 Flash (Multimodal)",
+    mentionsLegal: "Aviso Legal",
+    privacyPolicy: "Política de Privacidade",
+    accessibilityInfo: "Acessibilidade: não conforme",
   }
 };

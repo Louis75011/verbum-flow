@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <rect width="1200" height="630" fill="#0f172a" />
+  <rect x="560" y="220" width="80" height="80" rx="16" fill="#2563eb" />
+  <text x="600" y="260" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="48" fill="white" text-anchor="middle" dy=".35em">V</text>
+  <text x="600" y="360" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="64" fill="white" text-anchor="middle">VerbumFlow</text>
+  <text x="600" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="32" fill="#94a3b8" text-anchor="middle">Transcription &amp; Traduction IA</text>
+  <text x="600" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#64748b" text-anchor="middle">par Arx Systema</text>
+</svg>
