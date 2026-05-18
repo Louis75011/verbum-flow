@@ -1,0 +1,8 @@
+{
+  "name": "Sermon AI Transcriber & Translator",
+  "description": "Multilingual audio/video sermon transcription, translation, and structured summarization tool using Gemini 2.0 Flash.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
