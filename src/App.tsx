@@ -42,7 +42,8 @@ export default function App() {
 
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [progressStep, setProgressStep] = useState<"idle" | "uploading" | "transcribing" | "translating" | "summarizing">("idle");
+  const [progressStep, setProgressStep] = useState<"idle" | "uploading" | "polling" | "transcribing" | "translating" | "summarizing">("idle");
+  const [pollAttempt, setPollAttempt] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const [transcription, setTranscription] = useState("");
@@ -153,6 +154,33 @@ export default function App() {
         throw new Error("File upload failed: " + err.message);
       }
 
+      setProgressStep("polling");
+      let isFileReady = false;
+      let attempt = 0;
+      const MAX_ATTEMPTS = 30;
+
+      while (!isFileReady && attempt < MAX_ATTEMPTS) {
+        attempt++;
+        setPollAttempt(attempt);
+
+        const fileInfo = await ai.files.get({ name: uploadResult.name });
+
+        if (fileInfo.state === "ACTIVE") {
+          isFileReady = true;
+          break;
+        } else if (fileInfo.state === "FAILED") {
+          throw new Error("File processing failed. Check format and try again.");
+        }
+
+        // Wait 2 seconds
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+
+      if (!isFileReady) {
+        throw new Error("File processing timeout. Try a shorter file or try again.");
+      }
+
+      setPollAttempt(0);
       setProgressStep("transcribing");
 
       const isAutoDetect = sourceLang === "auto";
@@ -480,19 +508,24 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500 dark:text-slate-400">Processing Status</span>
                   <span className="text-blue-600 dark:text-blue-400">
-                    {progressStep === 'uploading' ? '25%' : progressStep === 'transcribing' ? '50%' : progressStep === 'translating' ? '75%' : '90%'}
+                    {progressStep === 'uploading' ? '15%' : progressStep === 'polling' ? '25%' : progressStep === 'transcribing' ? '50%' : progressStep === 'translating' ? '75%' : '90%'}
                   </span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-blue-500 transition-all duration-500" 
-                    style={{ width: progressStep === 'uploading' ? '25%' : progressStep === 'transcribing' ? '50%' : progressStep === 'translating' ? '75%' : '90%' }}
+                    style={{ width: progressStep === 'uploading' ? '15%' : progressStep === 'polling' ? '25%' : progressStep === 'transcribing' ? '50%' : progressStep === 'translating' ? '75%' : '90%' }}
                   ></div>
                 </div>
                 <ul className="mt-4 space-y-2 text-[11px]">
-                   <li className={`flex items-center gap-2 ${progressStep !== 'uploading' ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400 animate-pulse'}`}>
-                     {progressStep !== 'uploading' ? <Check size={12} strokeWidth={3} /> : <Loader2 size={12} className="animate-spin" />} {t.uploading} {progressStep !== 'uploading' && 'Complete'}
+                   <li className={`flex items-center gap-2 ${(progressStep !== 'uploading' && progressStep !== 'polling') ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400 animate-pulse'}`}>
+                     {(progressStep !== 'uploading' && progressStep !== 'polling') ? <Check size={12} strokeWidth={3} /> : <Loader2 size={12} className="animate-spin" />} {t.uploading} {(progressStep !== 'uploading' && progressStep !== 'polling') && 'Complete'}
                    </li>
+                   {progressStep === 'polling' && (
+                     <li className="flex items-center gap-2 text-blue-600 dark:text-blue-400 animate-pulse">
+                       <Loader2 size={12} className="animate-spin" /> Processing file... {pollAttempt > 0 ? `(attempt ${pollAttempt}/30)` : ''}
+                     </li>
+                   )}
                    {(progressStep === 'transcribing' || progressStep === 'translating' || progressStep === 'summarizing') && (
                      <li className={`flex items-center gap-2 ${progressStep !== 'transcribing' ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400 animate-pulse'}`}>
                        {progressStep !== 'transcribing' ? <Check size={12} strokeWidth={3} /> : <Loader2 size={12} className="animate-spin" />} {t.transcribingStatus} {progressStep !== 'transcribing' && 'Complete'}
