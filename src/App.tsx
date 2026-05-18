@@ -3,7 +3,7 @@ import { Copy, Check, Moon, Sun, Loader2, Settings, Eye, EyeOff, X } from "lucid
 import { translations, LanguageData } from "./i18n";
 import { GoogleGenAI } from "@google/genai";
 
-type SupportLang = "en" | "fr" | "es" | "it" | "de";
+type SupportLang = "en" | "fr" | "es" | "it" | "de" | "pt";
 type SourceLang = SupportLang | "auto" | "latin" | "pt" | "ar";
 type TargetLang = SupportLang;
 
@@ -25,10 +25,11 @@ const targetLanguages = [
   { value: "es", labelEn: "Spanish" },
   { value: "it", labelEn: "Italian" },
   { value: "de", labelEn: "German" },
+  { value: "pt", labelEn: "Portuguese" },
 ];
 
 export default function App() {
-  const [uiLang, setUiLang] = useState<SupportLang>(() => (localStorage.getItem("uiLang") as SupportLang) || "en");
+  const [uiLang, setUiLang] = useState<SupportLang>(() => (localStorage.getItem("verbumflow_ui_lang") as SupportLang) || "en");
   const [sourceLang, setSourceLang] = useState<SourceLang>(() => (localStorage.getItem("sourceLang") as SourceLang) || "auto");
   const [targetLang, setTargetLang] = useState<TargetLang>(() => (localStorage.getItem("targetLang") as TargetLang) || "en");
 
@@ -56,7 +57,7 @@ export default function App() {
   const t: LanguageData = translations[uiLang] || translations["en"];
 
   useEffect(() => {
-    localStorage.setItem("uiLang", uiLang);
+    localStorage.setItem("verbumflow_ui_lang", uiLang);
     localStorage.setItem("sourceLang", sourceLang);
     localStorage.setItem("targetLang", targetLang);
   }, [uiLang, sourceLang, targetLang]);
@@ -117,7 +118,7 @@ export default function App() {
 
   const checkAndSetFile = (selectedFile: File) => {
     if (selectedFile.size > 100 * 1024 * 1024) {
-      setError("File is too large (max 100MB).");
+      setError(t.fileTooLarge);
       return;
     }
     setFile(selectedFile);
@@ -128,7 +129,7 @@ export default function App() {
     if (!file) return;
 
     if (!apiKey) {
-      setError("No API Key found. Please enter your Gemini API Key in Settings.");
+      setError(t.noApiKeyError);
       setShowSettings(true);
       return;
     }
@@ -151,7 +152,7 @@ export default function App() {
           config: { mimeType: file.type || "audio/mp3" },
         });
       } catch(err: any) {
-        throw new Error("File upload failed: " + err.message);
+        throw new Error(t.fileUploadFailed + err.message);
       }
 
       setProgressStep("polling");
@@ -169,7 +170,7 @@ export default function App() {
           isFileReady = true;
           break;
         } else if (fileInfo.state === "FAILED") {
-          throw new Error("File processing failed. Check format and try again.");
+          throw new Error(t.fileFailedError);
         }
 
         // Wait 2 seconds
@@ -177,7 +178,7 @@ export default function App() {
       }
 
       if (!isFileReady) {
-        throw new Error("File processing timeout. Try a shorter file or try again.");
+        throw new Error(t.fileTimeoutError);
       }
 
       setPollAttempt(0);
@@ -325,9 +326,9 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
       {!apiKey && (
         <div className="bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-800 px-4 py-2 flex items-center justify-center gap-2 text-sm text-yellow-800 dark:text-yellow-200 z-20 shrink-0">
-          <span>⚠️ Enter your Gemini API key in Settings to use the app.</span>
+          <span>{t.missingKeyWarning}</span>
           <button onClick={() => setShowSettings(true)} className="font-semibold underline hover:text-yellow-900 dark:hover:text-yellow-100">
-            Open Settings
+            {t.openSettings}
           </button>
         </div>
       )}
@@ -336,20 +337,36 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-md overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700">
-              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">Settings</h2>
+              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-200">{t.settings}</h2>
               <button onClick={() => setShowSettings(false)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full transition-colors">
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Gemini API Key</label>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.uiLabel}</label>
+                <select
+                  value={uiLang}
+                  onChange={(e) => setUiLang(e.target.value as SupportLang)}
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="fr">Français</option>
+                  <option value="es">Español</option>
+                  <option value="de">Deutsch</option>
+                  <option value="it">Italiano</option>
+                  <option value="en">English</option>
+                  <option value="pt">Português</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">{t.apiKeyLabel}</label>
                 <div className="relative">
                   <input
                     type={showKeyPassword ? "text" : "password"}
                     value={tempApiKey}
                     onChange={(e) => setTempApiKey(e.target.value)}
-                    placeholder="AIzaSy..."
+                    placeholder={t.apiKeyPlaceholder}
                     className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-200 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <button
@@ -360,7 +377,7 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
                     {showKeyPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Your key is stored locally in your browser.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t.apiKeyStored}</p>
               </div>
             </div>
             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
@@ -368,15 +385,15 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
                 onClick={clearKey}
                 className="text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-3 py-1.5"
               >
-                Clear key
+                {t.clearKey}
               </button>
               <div className="flex items-center gap-3">
-                {keySavedMessage && <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1 font-medium"><Check size={16} /> Key saved</span>}
+                {keySavedMessage && <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1 font-medium"><Check size={16} /> {t.keySaved}</span>}
                 <button
                   onClick={saveSettings}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors"
                 >
-                  Save
+                  {t.save}
                 </button>
               </div>
             </div>
@@ -391,8 +408,7 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
             Verbum<span className="font-light text-slate-500 dark:text-slate-400 italic">Flow</span>
           </h1>
         </div>
-        
-        <div className="flex items-center gap-2 sm:gap-4 text-xs font-medium">
+               <div className="flex items-center gap-2 sm:gap-4 text-xs font-medium">
           <div className="flex flex-col hidden sm:flex">
             <label className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">{t.sourceLabel}</label>
             <select
@@ -414,21 +430,6 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
               {targetLanguages.map(l => <option key={l.value} value={l.value}>{l.labelEn}</option>)}
             </select>
           </div>
-          
-          <div className="flex flex-col">
-            <label className="text-[10px] text-slate-400 uppercase tracking-wider mb-1 hidden sm:block">{t.uiLabel}</label>
-            <select
-              value={uiLang}
-              onChange={(e) => setUiLang(e.target.value as SupportLang)}
-              className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 sm:mt-0 mt-[14px] focus:ring-1 focus:ring-blue-500 outline-none w-24 sm:w-28 text-slate-700 dark:text-slate-300 transform"
-            >
-              <option value="en">English</option>
-              <option value="fr">Français</option>
-              <option value="es">Español</option>
-              <option value="it">Italiano</option>
-              <option value="de">Deutsch</option>
-            </select>
-          </div>
 
           <button
             onClick={() => setDarkMode(!darkMode)}
@@ -441,7 +442,7 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
           <button
             onClick={() => setShowSettings(true)}
             className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 mt-[14px] sm:mt-0 transition-colors rounded-full flex-shrink-0"
-            aria-label="Settings"
+            aria-label={t.settings}
           >
             <Settings size={18} />
           </button>
@@ -506,7 +507,7 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
             {isProcessing && (
               <div className="space-y-2 text-xs font-medium">
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500 dark:text-slate-400">Processing Status</span>
+                  <span className="text-slate-500 dark:text-slate-400">{t.processingStatus}</span>
                   <span className="text-blue-600 dark:text-blue-400">
                     {progressStep === 'uploading' ? '15%' : progressStep === 'polling' ? '25%' : progressStep === 'transcribing' ? '50%' : progressStep === 'translating' ? '75%' : '90%'}
                   </span>
@@ -519,21 +520,21 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
                 </div>
                 <ul className="mt-4 space-y-2 text-[11px]">
                    <li className={`flex items-center gap-2 ${(progressStep !== 'uploading' && progressStep !== 'polling') ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400 animate-pulse'}`}>
-                     {(progressStep !== 'uploading' && progressStep !== 'polling') ? <Check size={12} strokeWidth={3} /> : <Loader2 size={12} className="animate-spin" />} {t.uploading} {(progressStep !== 'uploading' && progressStep !== 'polling') && 'Complete'}
+                     {(progressStep !== 'uploading' && progressStep !== 'polling') ? <Check size={12} strokeWidth={3} /> : <Loader2 size={12} className="animate-spin" />} {t.uploading} {(progressStep !== 'uploading' && progressStep !== 'polling') && t.complete}
                    </li>
                    {progressStep === 'polling' && (
                      <li className="flex items-center gap-2 text-blue-600 dark:text-blue-400 animate-pulse">
-                       <Loader2 size={12} className="animate-spin" /> Processing file... {pollAttempt > 0 ? `(attempt ${pollAttempt}/30)` : ''}
+                       <Loader2 size={12} className="animate-spin" /> {t.processingFile} {pollAttempt > 0 ? `(${t.attemptText} ${pollAttempt}/30)` : ''}
                      </li>
                    )}
                    {(progressStep === 'transcribing' || progressStep === 'translating' || progressStep === 'summarizing') && (
                      <li className={`flex items-center gap-2 ${progressStep !== 'transcribing' ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400 animate-pulse'}`}>
-                       {progressStep !== 'transcribing' ? <Check size={12} strokeWidth={3} /> : <Loader2 size={12} className="animate-spin" />} {t.transcribingStatus} {progressStep !== 'transcribing' && 'Complete'}
+                       {progressStep !== 'transcribing' ? <Check size={12} strokeWidth={3} /> : <Loader2 size={12} className="animate-spin" />} {t.transcribingStatus} {progressStep !== 'transcribing' && t.complete}
                      </li>
                    )}
                    {(progressStep === 'translating' || progressStep === 'summarizing') && (
                      <li className={`flex items-center gap-2 ${progressStep !== 'translating' ? 'text-green-600 dark:text-green-400' : 'text-blue-600 dark:text-blue-400 animate-pulse'}`}>
-                       {progressStep !== 'translating' ? <Check size={12} strokeWidth={3} /> : <Loader2 size={12} className="animate-spin" />} {t.translatingStatus} {progressStep !== 'translating' && 'Complete'}
+                       {progressStep !== 'translating' ? <Check size={12} strokeWidth={3} /> : <Loader2 size={12} className="animate-spin" />} {t.translatingStatus} {progressStep !== 'translating' && t.complete}
                      </li>
                    )}
                    {progressStep === 'summarizing' && (
@@ -556,7 +557,7 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
           )}
 
           <div className="mt-auto pt-4 p-3 text-[10px] text-slate-400 italic hidden lg:block">
-            System Prompt: Theological Register • High Formal • Liturgical Sensitivity Enabled
+            {t.systemPromptLabel}
           </div>
         </div>
         
@@ -607,11 +608,11 @@ Separate the three sections EXACTLY with: \n\n--- TRANSCRIPTION ---\n\n, \n\n---
 
            <div className="h-8 sm:h-10 px-4 sm:px-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 flex items-center justify-between text-[9px] sm:text-[10px] font-medium text-slate-400 shrink-0">
               <div className="flex gap-3 sm:gap-4 flex-wrap">
-                <span className="hidden sm:inline">Words: {currentTabContent ? getWordsCount(currentTabContent) : 0}</span>
+                <span className="hidden sm:inline">{t.words}: {currentTabContent ? getWordsCount(currentTabContent) : 0}</span>
                 <span>{t.characters}: {currentTabContent ? currentTabContent.length : 0}</span>
-                <span className="hidden xs:inline">Est. Reading Time: {currentTabContent ? getReadTime(currentTabContent) : 0} {t.min}</span>
+                <span className="hidden xs:inline">{t.estimatedReadingTime}: {currentTabContent ? getReadTime(currentTabContent) : 0} {t.min}</span>
               </div>
-              <span className="hidden sm:inline">AI Engine: Gemini 2.0 Flash (Multimodal)</span>
+              <span className="hidden sm:inline">{t.aiEngine}</span>
            </div>
         </div>
       </main>
